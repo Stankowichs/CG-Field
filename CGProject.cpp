@@ -305,7 +305,7 @@ void drawField() {
     drawCircle(0, 0, 0.05f);
 
     // Área grande - Esquerda
-    float bigBoxW = 2.5f, bigBoxH = 3.2f;
+    float bigBoxW = 3.5f, bigBoxH = 7.2f;
     glColor3f(1,1,1);
     glBegin(GL_LINE_LOOP);
     glVertex2f(FIELD_LEFT,           -bigBoxH/2);
@@ -323,7 +323,7 @@ void drawField() {
     glEnd();
 
     // Área pequena - Esquerda
-    float sBoxW = 1.0f, sBoxH = 1.6f;
+    float sBoxW = 1.0f, sBoxH = 4.6f;
     glBegin(GL_LINE_LOOP);
     glVertex2f(FIELD_LEFT,          -sBoxH/2);
     glVertex2f(FIELD_LEFT+sBoxW,    -sBoxH/2);
@@ -341,15 +341,15 @@ void drawField() {
 
     // Pontos de pênalti
     glColor3f(1,1,1);
-    drawCircle(FIELD_LEFT  + 2.0f, 0, 0.05f);
-    drawCircle(FIELD_RIGHT - 2.0f, 0, 0.05f);
+    drawCircle(FIELD_LEFT  + 2.75f, 0, 0.05f);
+    drawCircle(FIELD_RIGHT - 2.75f, 0, 0.05f);
 
     // Arco de pênalti (esquerdo)
     glLineWidth(2.0f);
     glBegin(GL_LINE_STRIP);
-    for(int i = -30; i <= 30; i++) {
+    for(int i = -70; i <= 130; i++) {
         float a = (float)i * PI / 180.0f; //graus para radianos
-        float px = (FIELD_LEFT + 2.0f) + cosf(a)*1.2f;
+        float px = (FIELD_LEFT + 3.0f) + cosf(a)*1.2f;
         float py = sinf(a)*1.2f;
         if(px > FIELD_LEFT + bigBoxW)
             glVertex2f(px, py);
@@ -358,12 +358,52 @@ void drawField() {
 
     // Arco de pênalti (direito)
     glBegin(GL_LINE_STRIP);
-    for(int i = 150; i <= 210; i++) {
+    for(int i = 60; i <= 300; i++) {
         float a = (float)i * PI / 180.0f;
-        float px = (FIELD_RIGHT - 2.0f) + cosf(a)*1.2f;
+        float px = (FIELD_RIGHT - 3.0f) + cosf(a)*1.2f;
         float py = sinf(a)*1.2f;
         if(px < FIELD_RIGHT - bigBoxW)
             glVertex2f(px, py);
+    }
+    glEnd();
+
+    //Escanteio (direito cima)
+    glBegin(GL_LINE_STRIP);
+    for(int i = 180; i <= 270; i++) {
+        float a = (float)i * PI / 180.0f;
+        float px = (FIELD_RIGHT) + cosf(a)*0.7f;
+        float py = (FIELD_TOP) + sinf(a)*0.7f;
+        glVertex2f(px, py);
+    }
+    glEnd();
+
+    //Escanteio (direito baixo)
+    glBegin(GL_LINE_STRIP);
+    for(int i = 90; i <= 180; i++) {
+        float a = (float)i * PI / 180.0f;
+        float px = (FIELD_RIGHT) + cosf(a)*0.7f;
+        float py = (FIELD_BOTTOM) + sinf(a)*0.7f;
+        glVertex2f(px, py);
+    }
+    glEnd();
+
+    //Escanteio (esquerdo baixo)
+    glBegin(GL_LINE_STRIP);
+    for(int i = 0; i <= 90; i++) {
+        float a = (float)i * PI / 180.0f;
+        float px = (FIELD_LEFT) + cosf(a)*0.7f;
+        float py = (FIELD_BOTTOM) + sinf(a)*0.7f;
+        glVertex2f(px, py);
+    }
+    glEnd();
+
+    //Escanteio (esquerdo cima)
+    glBegin(GL_LINE_STRIP);
+    for(int i = 270; i <= 360; i++) {
+        float a = (float)i * PI / 180.0f;
+        float px = (FIELD_LEFT) + cosf(a)*0.7f;
+        float py = (FIELD_TOP) + sinf(a)*0.7f;
+        glVertex2f(px, py);
     }
     glEnd();
 
@@ -498,8 +538,6 @@ void drawPlayer(const Player& p) {
     float px = p.pos.x;
     float py = p.pos.y;
     float r  = PLAYER_R;
-    float anim = sinf(p.animTimer * 6.0f) * 0.06f;
-
     glPushMatrix();
     glTranslatef(px, py, 0);
 
@@ -525,38 +563,17 @@ void drawPlayer(const Player& p) {
 
     // Cabeça (círculo menor, tom de pele)
     glColor3f(0.95f, 0.78f, 0.60f);
-    drawCircle(0, r*0.72f + anim, r*0.38f, 20);
+    drawCircle(0, r*0.72f, r*0.38f, 20);
 
     // Cabelo
     if(p.team == 0) glColor3f(0.2f, 0.1f, 0.05f);
     else            glColor3f(0.6f, 0.3f, 0.1f);
-    drawSemiCircle(0, r*0.72f + anim, r*0.38f, 1, 16);
-
-    // Pernas (linhas animadas)
-    glLineWidth(3.0f);
-    if(p.team == 0) glColor3f(0.9f, 0.9f, 0.9f); // calção branco
-    else            glColor3f(0.1f, 0.1f, 0.5f);
-    glBegin(GL_LINES);
-    // Perna esquerda
-    glVertex2f(-r*0.3f, -r*0.5f);
-    glVertex2f(-r*0.5f + anim, -r*1.0f);
-    // Perna direita
-    glVertex2f( r*0.3f, -r*0.5f);
-    glVertex2f( r*0.5f - anim, -r*1.0f);
-    glEnd();
-
-    // Chuteira
-    if(p.team == 0) glColor3f(0.05f, 0.05f, 0.5f);
-    else            glColor3f(0.05f, 0.05f, 0.05f);
-    drawCircle(-r*0.5f + anim, -r*1.05f, r*0.13f, 8);
-    drawCircle( r*0.5f - anim, -r*1.05f, r*0.13f, 8);
-
-    glLineWidth(1.0f);
+    drawSemiCircle(0, r*0.72f, r*0.38f, 1, 16);
 
     // Brilho no capacete do goleiro
     if(p.isGoalie) {
         glColor4f(1,1,1,0.5f);
-        drawCircle(-r*0.1f, r*0.85f + anim, r*0.1f, 10);
+        drawCircle(-r*0.1f, r*0.85f, r*0.1f, 10);
     }
 
     glPopMatrix();
