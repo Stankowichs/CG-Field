@@ -767,7 +767,7 @@ void updatePlayers(float dt) {
                 // Companheiros se movem para posição de suporte
                 Vec2 support;
                 int idx = i;
-                if(idx == 0) support = Vec2(-5.0f, 0.0f);
+                if(idx == 0) support = Vec2(-5.0f, ball.pos.y);
                 else if(idx == 1) support = Vec2(ball.pos.x - 2.0f, ball.pos.y + 1.5f);
                 else if(idx == 2) support = Vec2(ball.pos.x - 2.0f, ball.pos.y - 1.5f);
                 else              support = Vec2(ball.pos.x - 1.0f, ball.pos.y);
@@ -799,9 +799,15 @@ void updatePlayers(float dt) {
                 float agression = 0.055f;
 
                 if(ridx == 0) {
-                    // Atacante: vai direto na bola
+                    // Atacante: vai direto na bola, mas evita mirar na borda
                     target = ball.pos;
                     agression = 0.065f;
+
+                    const float edgeMargin = PLAYER_R + BALL_RADIUS + 0.22f;
+                    if(ball.pos.x < FIELD_LEFT + edgeMargin)  target.x = FIELD_LEFT + edgeMargin;
+                    if(ball.pos.x > FIELD_RIGHT - edgeMargin) target.x = FIELD_RIGHT - edgeMargin;
+                    if(ball.pos.y < FIELD_BOTTOM + edgeMargin) target.y = FIELD_BOTTOM + edgeMargin;
+                    if(ball.pos.y > FIELD_TOP - edgeMargin)    target.y = FIELD_TOP - edgeMargin;
                 } else if(ridx == 1) {
                     // Meio-campo: posição à frente
                     target = Vec2(ball.pos.x + 1.5f, ball.pos.y + 1.2f);
@@ -957,6 +963,49 @@ void updateBall(float dt) {
             ball.vel.x -= 2 * dot * normal.x;
             ball.vel.y -= 2 * dot * normal.y;
             ball.vel = ball.vel * 0.65f;
+        }
+    }
+
+    // A colisao com jogadores pode empurrar a bola de volta para fora.
+    // Reaplica os limites para evitar que ela fique presa fora do campo.
+    if(ball.pos.y + BALL_RADIUS > FIELD_TOP) {
+        ball.pos.y = FIELD_TOP - BALL_RADIUS;
+        ball.vel.y = -fabsf(ball.vel.y) * 0.7f;
+    }
+    if(ball.pos.y - BALL_RADIUS < FIELD_BOTTOM) {
+        ball.pos.y = FIELD_BOTTOM + BALL_RADIUS;
+        ball.vel.y =  fabsf(ball.vel.y) * 0.7f;
+    }
+
+    if(ball.pos.x - BALL_RADIUS < FIELD_LEFT) {
+        if(ball.pos.y > -GOAL_WIDTH && ball.pos.y < GOAL_WIDTH) {
+            if(!goalAnimation) {
+                score.away++;
+                lastGoalTeam    = 1;
+                goalAnimation   = true;
+                goalAnimTimer   = 0;
+                resetBall();
+                resetPlayers();
+            }
+        } else {
+            ball.pos.x = FIELD_LEFT + BALL_RADIUS;
+            ball.vel.x =  fabsf(ball.vel.x) * 0.7f;
+        }
+    }
+
+    if(ball.pos.x + BALL_RADIUS > FIELD_RIGHT) {
+        if(ball.pos.y > -GOAL_WIDTH && ball.pos.y < GOAL_WIDTH) {
+            if(!goalAnimation) {
+                score.home++;
+                lastGoalTeam    = 0;
+                goalAnimation   = true;
+                goalAnimTimer   = 0;
+                resetBall();
+                resetPlayers();
+            }
+        } else {
+            ball.pos.x = FIELD_RIGHT - BALL_RADIUS;
+            ball.vel.x = -fabsf(ball.vel.x) * 0.7f;
         }
     }
 
