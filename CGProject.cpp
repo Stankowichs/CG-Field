@@ -61,6 +61,7 @@ const int   NUM_PLAYERS  = 4;      // por time (excluindo goleiro)
 // Power-up
 const float STAR_RADIUS  = 0.22f;
 const float TURBO_TIME   = 5.0f;   // segundos
+const float STAR_RESET_DELAY = 2.0f;
 
 // =====================================================================
 // Estruturas
@@ -136,6 +137,38 @@ float dist(Vec2 a, Vec2 b) {
     return (a-b).len();
 }
 
+void clampPlayerToField(Player& pl) {
+    if(pl.pos.x < FIELD_LEFT  + PLAYER_R) pl.pos.x = FIELD_LEFT  + PLAYER_R;
+    if(pl.pos.x > FIELD_RIGHT - PLAYER_R) pl.pos.x = FIELD_RIGHT - PLAYER_R;
+    if(pl.pos.y < FIELD_BOTTOM + PLAYER_R) pl.pos.y = FIELD_BOTTOM + PLAYER_R;
+    if(pl.pos.y > FIELD_TOP   - PLAYER_R) pl.pos.y = FIELD_TOP   - PLAYER_R;
+}
+
+void resolvePlayerCollisions() {
+    int totalPlayers = NUM_PLAYERS * 2 + 2;
+    float minD = PLAYER_R * 2.0f;
+
+    for(int i = 0; i < totalPlayers; i++) {
+        for(int j = i + 1; j < totalPlayers; j++) {
+            if(players[i].isGoalie || players[j].isGoalie) continue;
+
+            Vec2 delta = players[j].pos - players[i].pos;
+            float d = delta.len();
+            if(d >= minD) continue;
+
+            Vec2 normal = (d > 0.0001f) ? delta * (1.0f / d) : Vec2(1, 0);
+            float overlap = minD - d;
+            Vec2 push = normal * (overlap * 0.5f + 0.001f);
+
+            players[i].pos = players[i].pos - push;
+            players[j].pos = players[j].pos + push;
+
+            clampPlayerToField(players[i]);
+            clampPlayerToField(players[j]);
+        }
+    }
+}
+
 void setColor3f(float r, float g, float b) {
     glColor3f(r, g, b);
 }
@@ -191,9 +224,9 @@ void resetPlayers() {
 
 void resetStar() {
     star.pos         = Vec2(randf(-3,3), randf(-2,2));
-    star.active      = true;
+    star.active      = false;
     star.rotAngle    = 0;
-    star.respawnTimer= 0;
+    star.respawnTimer= STAR_RESET_DELAY;
 }
 
 void initGame() {
@@ -547,17 +580,21 @@ void drawPlayer(const Player& p) {
 
     // Corpo (círculo maior - camisa)
     if(p.team == 0) {
-        if(p.isGoalie) glColor3f(0.1f, 0.6f, 0.9f); // goleiro azul claro
-        else           glColor3f(0.1f, 0.2f, 0.9f);  // azul Brasil
+        if(p.isGoalie) glColor3f(0.05f, 0.16f, 0.55f); // goleiro azul escuro
+        else           glColor3f(0.82f, 0.68f, 0.10f); // amarelo Brasil mais escuro
     } else {
-        if(p.isGoalie) glColor3f(0.9f, 0.9f, 0.1f);  // goleiro amarelo
-        else           glColor3f(0.9f, 0.1f, 0.1f);   // vermelho
+        if(p.isGoalie) glColor3f(0.82f, 0.12f, 0.12f); // goleiro vermelho
+        else           glColor3f(0.07f, 0.23f, 0.78f); // azul intenso do Japao
     }
     drawCircle(0, 0, r, 24);
 
     // Borda (número da camisa / detalhe)
-    if(p.team == 0) glColor3f(0.8f, 0.8f, 1.0f);
-    else            glColor3f(1.0f, 0.7f, 0.7f);
+    if(p.team == 0) {
+        glColor3f(1.0f, 1.0f, 1.0f);
+    } else {
+        if(p.isGoalie) glColor3f(1.0f, 1.0f, 1.0f);
+        else           glColor3f(1.0f, 1.0f, 1.0f);
+    }
     glLineWidth(1.5f);
     drawCircleOutline(0, 0, r, 24);
 
@@ -566,8 +603,13 @@ void drawPlayer(const Player& p) {
     drawCircle(0, r*0.72f, r*0.38f, 20);
 
     // Cabelo
-    if(p.team == 0) glColor3f(0.2f, 0.1f, 0.05f);
-    else            glColor3f(0.6f, 0.3f, 0.1f);
+    if(p.team == 0) {
+        if(p.isGoalie) glColor3f(0.95f, 0.82f, 0.18f);
+        else           glColor3f(0.05f, 0.16f, 0.55f);
+    } else {
+        if(p.isGoalie) glColor3f(0.82f, 0.12f, 0.12f);
+        else           glColor3f(1.0f, 1.0f, 1.0f);
+    }
     drawSemiCircle(0, r*0.72f, r*0.38f, 1, 16);
 
     // Brilho no capacete do goleiro
@@ -848,12 +890,10 @@ void updatePlayers(float dt) {
             }
         }
 
-        // Manter jogadores dentro do campo
-        if(pl.pos.x < FIELD_LEFT  + PLAYER_R) pl.pos.x = FIELD_LEFT  + PLAYER_R;
-        if(pl.pos.x > FIELD_RIGHT - PLAYER_R) pl.pos.x = FIELD_RIGHT - PLAYER_R;
-        if(pl.pos.y < FIELD_BOTTOM + PLAYER_R) pl.pos.y = FIELD_BOTTOM + PLAYER_R;
-        if(pl.pos.y > FIELD_TOP   - PLAYER_R) pl.pos.y = FIELD_TOP   - PLAYER_R;
+        clampPlayerToField(pl);
     }
+
+    resolvePlayerCollisions();
 }
 
 // =====================================================================
@@ -925,6 +965,7 @@ void updateBall(float dt) {
                 goalAnimTimer   = 0;
                 resetBall();
                 resetPlayers();
+                resetStar();
             }
         } else {
             ball.pos.x = FIELD_LEFT + BALL_RADIUS;
@@ -943,6 +984,7 @@ void updateBall(float dt) {
                 goalAnimTimer   = 0;
                 resetBall();
                 resetPlayers();
+                resetStar();
             }
         } else {
             ball.pos.x = FIELD_RIGHT - BALL_RADIUS;
@@ -986,6 +1028,7 @@ void updateBall(float dt) {
                 goalAnimTimer   = 0;
                 resetBall();
                 resetPlayers();
+                resetStar();
             }
         } else {
             ball.pos.x = FIELD_LEFT + BALL_RADIUS;
@@ -1002,6 +1045,7 @@ void updateBall(float dt) {
                 goalAnimTimer   = 0;
                 resetBall();
                 resetPlayers();
+                resetStar();
             }
         } else {
             ball.pos.x = FIELD_RIGHT - BALL_RADIUS;
@@ -1092,6 +1136,7 @@ void keyDown(unsigned char key, int, int) {
     if(key == 'r' || key == 'R') {
         resetBall();
         resetPlayers();
+        resetStar();
     }
     if(key == ' ') {                 // Espaço: chute
         float spd = ball.turbo ? BALL_TURBO : BALL_SPEED;
