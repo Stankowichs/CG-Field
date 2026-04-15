@@ -61,6 +61,7 @@ const int   NUM_PLAYERS  = 4;      // por time (excluindo goleiro)
 // Power-up
 const float STAR_RADIUS  = 0.22f;
 const float TURBO_TIME   = 5.0f;   // segundos
+const float STAR_RESET_DELAY = 2.0f;
 
 // =====================================================================
 // Estruturas
@@ -136,6 +137,38 @@ float dist(Vec2 a, Vec2 b) {
     return (a-b).len();
 }
 
+void clampPlayerToField(Player& pl) {
+    if(pl.pos.x < FIELD_LEFT  + PLAYER_R) pl.pos.x = FIELD_LEFT  + PLAYER_R;
+    if(pl.pos.x > FIELD_RIGHT - PLAYER_R) pl.pos.x = FIELD_RIGHT - PLAYER_R;
+    if(pl.pos.y < FIELD_BOTTOM + PLAYER_R) pl.pos.y = FIELD_BOTTOM + PLAYER_R;
+    if(pl.pos.y > FIELD_TOP   - PLAYER_R) pl.pos.y = FIELD_TOP   - PLAYER_R;
+}
+
+void resolvePlayerCollisions() {
+    int totalPlayers = NUM_PLAYERS * 2 + 2;
+    float minD = PLAYER_R * 2.0f;
+
+    for(int i = 0; i < totalPlayers; i++) {
+        for(int j = i + 1; j < totalPlayers; j++) {
+            if(players[i].isGoalie || players[j].isGoalie) continue;
+
+            Vec2 delta = players[j].pos - players[i].pos;
+            float d = delta.len();
+            if(d >= minD) continue;
+
+            Vec2 normal = (d > 0.0001f) ? delta * (1.0f / d) : Vec2(1, 0);
+            float overlap = minD - d;
+            Vec2 push = normal * (overlap * 0.5f + 0.001f);
+
+            players[i].pos = players[i].pos - push;
+            players[j].pos = players[j].pos + push;
+
+            clampPlayerToField(players[i]);
+            clampPlayerToField(players[j]);
+        }
+    }
+}
+
 void setColor3f(float r, float g, float b) {
     glColor3f(r, g, b);
 }
@@ -191,9 +224,9 @@ void resetPlayers() {
 
 void resetStar() {
     star.pos         = Vec2(randf(-3,3), randf(-2,2));
-    star.active      = true;
+    star.active      = false;
     star.rotAngle    = 0;
-    star.respawnTimer= 0;
+    star.respawnTimer= STAR_RESET_DELAY;
 }
 
 void initGame() {
@@ -857,12 +890,10 @@ void updatePlayers(float dt) {
             }
         }
 
-        // Manter jogadores dentro do campo
-        if(pl.pos.x < FIELD_LEFT  + PLAYER_R) pl.pos.x = FIELD_LEFT  + PLAYER_R;
-        if(pl.pos.x > FIELD_RIGHT - PLAYER_R) pl.pos.x = FIELD_RIGHT - PLAYER_R;
-        if(pl.pos.y < FIELD_BOTTOM + PLAYER_R) pl.pos.y = FIELD_BOTTOM + PLAYER_R;
-        if(pl.pos.y > FIELD_TOP   - PLAYER_R) pl.pos.y = FIELD_TOP   - PLAYER_R;
+        clampPlayerToField(pl);
     }
+
+    resolvePlayerCollisions();
 }
 
 // =====================================================================
