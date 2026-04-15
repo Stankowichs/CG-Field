@@ -550,8 +550,8 @@ void drawPlayer(const Player& p) {
         if(p.isGoalie) glColor3f(0.05f, 0.16f, 0.55f); // goleiro azul escuro
         else           glColor3f(0.82f, 0.68f, 0.10f); // amarelo Brasil mais escuro
     } else {
-        if(p.isGoalie) glColor3f(0.82f, 0.12f, 0.12f); // goleiro branco
-        else           glColor3f(0.97f, 0.97f, 0.97f); // linha branca
+        if(p.isGoalie) glColor3f(0.82f, 0.12f, 0.12f); // goleiro vermelho
+        else           glColor3f(0.07f, 0.23f, 0.78f); // azul intenso do Japao
     }
     drawCircle(0, 0, r, 24);
 
@@ -560,7 +560,7 @@ void drawPlayer(const Player& p) {
         glColor3f(1.0f, 1.0f, 1.0f);
     } else {
         if(p.isGoalie) glColor3f(1.0f, 1.0f, 1.0f);
-        else           glColor3f(0.82f, 0.12f, 0.12f);
+        else           glColor3f(1.0f, 1.0f, 1.0f);
     }
     glLineWidth(1.5f);
     drawCircleOutline(0, 0, r, 24);
@@ -574,8 +574,8 @@ void drawPlayer(const Player& p) {
         if(p.isGoalie) glColor3f(0.95f, 0.82f, 0.18f);
         else           glColor3f(0.05f, 0.16f, 0.55f);
     } else {
-        if(p.isGoalie) glColor3f(1.0f, 1.0f, 1.0f);
-        else           glColor3f(0.82f, 0.12f, 0.12f);
+        if(p.isGoalie) glColor3f(0.82f, 0.12f, 0.12f);
+        else           glColor3f(1.0f, 1.0f, 1.0f);
     }
     drawSemiCircle(0, r*0.72f, r*0.38f, 1, 16);
 
