@@ -547,17 +547,21 @@ void drawPlayer(const Player& p) {
 
     // Corpo (círculo maior - camisa)
     if(p.team == 0) {
-        if(p.isGoalie) glColor3f(0.1f, 0.6f, 0.9f); // goleiro azul claro
-        else           glColor3f(0.1f, 0.2f, 0.9f);  // azul Brasil
+        if(p.isGoalie) glColor3f(0.05f, 0.16f, 0.55f); // goleiro azul escuro
+        else           glColor3f(0.82f, 0.68f, 0.10f); // amarelo Brasil mais escuro
     } else {
-        if(p.isGoalie) glColor3f(0.9f, 0.9f, 0.1f);  // goleiro amarelo
-        else           glColor3f(0.9f, 0.1f, 0.1f);   // vermelho
+        if(p.isGoalie) glColor3f(0.82f, 0.12f, 0.12f); // goleiro branco
+        else           glColor3f(0.97f, 0.97f, 0.97f); // linha branca
     }
     drawCircle(0, 0, r, 24);
 
     // Borda (número da camisa / detalhe)
-    if(p.team == 0) glColor3f(0.8f, 0.8f, 1.0f);
-    else            glColor3f(1.0f, 0.7f, 0.7f);
+    if(p.team == 0) {
+        glColor3f(1.0f, 1.0f, 1.0f);
+    } else {
+        if(p.isGoalie) glColor3f(1.0f, 1.0f, 1.0f);
+        else           glColor3f(0.82f, 0.12f, 0.12f);
+    }
     glLineWidth(1.5f);
     drawCircleOutline(0, 0, r, 24);
 
@@ -566,8 +570,13 @@ void drawPlayer(const Player& p) {
     drawCircle(0, r*0.72f, r*0.38f, 20);
 
     // Cabelo
-    if(p.team == 0) glColor3f(0.2f, 0.1f, 0.05f);
-    else            glColor3f(0.6f, 0.3f, 0.1f);
+    if(p.team == 0) {
+        if(p.isGoalie) glColor3f(0.95f, 0.82f, 0.18f);
+        else           glColor3f(0.05f, 0.16f, 0.55f);
+    } else {
+        if(p.isGoalie) glColor3f(1.0f, 1.0f, 1.0f);
+        else           glColor3f(0.82f, 0.12f, 0.12f);
+    }
     drawSemiCircle(0, r*0.72f, r*0.38f, 1, 16);
 
     // Brilho no capacete do goleiro
@@ -925,6 +934,7 @@ void updateBall(float dt) {
                 goalAnimTimer   = 0;
                 resetBall();
                 resetPlayers();
+                resetStar();
             }
         } else {
             ball.pos.x = FIELD_LEFT + BALL_RADIUS;
@@ -943,6 +953,7 @@ void updateBall(float dt) {
                 goalAnimTimer   = 0;
                 resetBall();
                 resetPlayers();
+                resetStar();
             }
         } else {
             ball.pos.x = FIELD_RIGHT - BALL_RADIUS;
@@ -986,6 +997,7 @@ void updateBall(float dt) {
                 goalAnimTimer   = 0;
                 resetBall();
                 resetPlayers();
+                resetStar();
             }
         } else {
             ball.pos.x = FIELD_LEFT + BALL_RADIUS;
@@ -1002,6 +1014,7 @@ void updateBall(float dt) {
                 goalAnimTimer   = 0;
                 resetBall();
                 resetPlayers();
+                resetStar();
             }
         } else {
             ball.pos.x = FIELD_RIGHT - BALL_RADIUS;
@@ -1092,6 +1105,7 @@ void keyDown(unsigned char key, int, int) {
     if(key == 'r' || key == 'R') {
         resetBall();
         resetPlayers();
+        resetStar();
     }
     if(key == ' ') {                 // Espaço: chute
         float spd = ball.turbo ? BALL_TURBO : BALL_SPEED;
