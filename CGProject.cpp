@@ -35,7 +35,7 @@
 
 // Dimensões da janela
 const int WINDOW_WIDTH  = 1024;
-const int WINDOW_HEIGHT = 768;
+const int WINDOW_HEIGHT = 900;
 
 // Dimensões do campo (coordenadas OpenGL)
 const float FIELD_LEFT   = -8.5f;
@@ -106,6 +106,12 @@ struct Score {
     int home, away;
 };
 
+struct Fan {
+    float x, y;
+    int tipo;
+    float escala;
+};
+
 // =====================================================================
 // Estado global
 // =====================================================================
@@ -113,6 +119,11 @@ Ball   ball;
 Player players[NUM_PLAYERS*2 + 2]; // +2 goleiros
 Star   star;
 Score  score;
+std::vector<Fan> crowd;
+
+void createCrowd();
+void drawCrowd();
+void drawFanSimple(float x, float y, int tipo, float s);
 
 bool keys[256];
 bool specialKeys[256];
@@ -280,6 +291,7 @@ void initGame() {
     resetBall();
     resetPlayers();
     resetStar();
+    createCrowd();
     memset(keys, 0, sizeof(keys));
     memset(specialKeys, 0, sizeof(specialKeys));
     goalAnimation = false;
@@ -330,6 +342,128 @@ void drawRect(float x1, float y1, float x2, float y2) {
     glVertex2f(x1,y1); glVertex2f(x2,y1);
     glVertex2f(x2,y2); glVertex2f(x1,y2);
     glEnd();
+}
+
+// Torcedor
+void drawFanSimple(float x, float y, int tipo, float s) {
+    // corpo / camisa
+    if (tipo == 0) glColor3f(1.0f, 1.0f, 0.0f);
+    else if (tipo == 1) glColor3f(0.0f, 0.3f, 1.0f);
+    else glColor3f(0.0f, 0.7f, 0.0f);
+
+    glBegin(GL_POLYGON);
+        glVertex2f(x - 0.11f*s, y - 0.12f*s);
+        glVertex2f(x + 0.11f*s, y - 0.12f*s);
+        glVertex2f(x + 0.10f*s, y + 0.02f*s);
+        glVertex2f(x + 0.06f*s, y + 0.10f*s);
+        glVertex2f(x - 0.06f*s, y + 0.10f*s);
+        glVertex2f(x - 0.10f*s, y + 0.02f*s);
+    glEnd();
+
+    // cabeça arredondada
+    glColor3f(0.95f, 0.78f, 0.60f);
+    drawCircle(x, y + 0.16f*s, 0.06f*s, 12);
+
+    // contorno do corpo
+    glColor3f(0.0f, 0.0f, 0.0f);
+    glLineWidth(1.0f);
+    glBegin(GL_LINE_LOOP);
+        glVertex2f(x - 0.11f*s, y - 0.12f*s);
+        glVertex2f(x + 0.11f*s, y - 0.12f*s);
+        glVertex2f(x + 0.10f*s, y + 0.02f*s);
+        glVertex2f(x + 0.06f*s, y + 0.10f*s);
+        glVertex2f(x - 0.06f*s, y + 0.10f*s);
+        glVertex2f(x - 0.10f*s, y + 0.02f*s);
+    glEnd();
+
+    // contorno da cabeça
+    drawCircleOutline(x, y + 0.16f*s, 0.06f*s, 12);
+}
+
+void drawCrowd() {
+    for (int i = crowd.size() - 1; i >= 0; i--) {
+        drawFanSimple(crowd[i].x, crowd[i].y, crowd[i].tipo, crowd[i].escala);
+    }
+}
+
+void createCrowd() {
+    crowd.clear();
+
+    for (float y = 6.7f; y <= 8.1f; y += 0.22f) {
+        for (float x = -8.0f; x <= 8.09f; x += 0.15f) {
+            bool escada =
+                (x >= -2.88f && x <= -2.4f) ||
+                (x >= 2.78f && x <= 3.25f);
+
+            bool teto = 
+                (y >= 7.1f && y <= 7.3f) ||
+                (y >= 7.7f && y < 8.1f);
+
+
+            if(escada || teto) continue;
+
+            Fan f;
+            f.x = x;                  // sem aleatoriedade no x
+            f.y = y;                  // sem aleatoriedade no y
+            f.tipo = rand() % 3;
+            f.escala = 1.0f;          // tamanho fixo
+            crowd.push_back(f);
+        }
+    }
+
+    for (float y = 8.1f; y <= 10.0f; y += 0.22f) {
+        for (float x = -8.0f; x <= 8.09f; x += 0.15f) {
+            bool escada =
+                (x >= -2.88f && x <= -2.4f) ||
+                (x >= 2.78f && x <= 3.25f);
+
+            bool teto = 
+                (y >= 8.5f && y <= 8.6f) ||
+                (y >= 9.2f && y <= 9.4f);
+
+
+            if(escada || teto) continue;
+
+            Fan f;
+            f.x = x;                  // sem aleatoriedade no x
+            f.y = y;                  // sem aleatoriedade no y
+            f.tipo = rand() % 3;
+            f.escala = 1.0f;          // tamanho fixo
+            crowd.push_back(f);
+        }
+    }
+}
+
+//////////////////////////////////////////
+void drawStairAisle(float x, float w) {
+    // faixa principal da escada
+    glColor3f(0.78f, 0.78f, 0.78f);
+    drawRect(x, 6.5f, x + w, 10.0f);
+
+    glColor3f(0.3f, 0.3f, 0.3f);
+    glLineWidth(1.5f);
+    for(float y = 6.6f; y <= 10.0f; y+= 0.15f){
+        glBegin(GL_LINES);
+            glVertex2f(x, y);
+            glVertex2f(x + w + 0.01f, y);
+        glEnd();
+    }
+    glColor3f(0.55f, 0.55f, 0.55f);
+    glLineWidth(1.0f);
+    for(float y = 6.57f; y <= 10.0f; y+= 0.15f){
+        glBegin(GL_LINES);
+            glVertex2f(x, y);
+            glVertex2f(x + w + 0.01f, y);
+        glEnd();
+    }
+}
+
+void drawShadow(float y) {
+    glColor3f(0.62f, 0.62f, 0.62f);
+    drawRect(-8.52f, y, 8.52f, y + 0.08f);
+
+    glColor3f(0.38f, 0.38f, 0.38f);
+    drawRect(-8.52f, y - 0.08f, 8.52f, y);
 }
 
 // Texto bitmap simples
@@ -722,7 +856,7 @@ void drawStar() {
 // =====================================================================
 void drawScoreboard() {
     // Fundo do placar
-    float sbX  = -2.2f, sbY = 5.9f;
+    float sbX  = -2.2f, sbY = -5.6f;
     float sbW  =  4.4f, sbH = 1.0f;
 
     // Sombra
@@ -788,8 +922,8 @@ void drawScoreboard() {
     // Controles (rodapé)
     glColor3f(0.6f, 0.6f, 0.6f);
     drawText(-8.4f, FIELD_BOTTOM - 0.4f,
-             "W/A/S/D ou SETAS: Mover  |  ESPACO: Turbo  |  R: Reset  |  ESC: Sair",
-             GLUT_BITMAP_HELVETICA_12);
+             "W/A/S/D ou SETAS: Mover | ESPACO: Turbo | R: Reset | ESC: Sair",
+             GLUT_BITMAP_HELVETICA_10);
 }
 
 // =====================================================================
@@ -836,6 +970,44 @@ void drawGoalAnimation() {
             drawCircle(fx, fy, 0.12f, 8);
         }
     }
+}
+
+void drawStands(){
+    //bandeiras 
+    glColor3f(0.0f, 0.8f, 0.0f);
+    drawRect(-8.52f, 5.55f, 8.52f, 6.55f);
+    glColor3f(0.9f, 1.0f, 0.0f);
+    drawRect(-8.52f, 5.65f, 8.52f, 5.80f);
+    drawRect(-8.52f, 5.95f, 8.52f, 6.1f);
+    drawRect(-8.52f, 6.25f, 8.52f, 6.4f);
+    glColor3f(0.0f, 0.0f, 0.9f);
+    drawText(-8.2f, 5.9f, "MOVIMENTO VERDE AMARELO  MOVIMENTO VERDE AMARELO  MOVIMENTO VERDE AMARELO", GLUT_BITMAP_HELVETICA_18);
+
+    //arquibancada
+    glColor3f(0.55f, 0.55f, 0.55f);
+    drawRect(-8.52f, 6.5f, 8.52f, 10.0f);
+
+    drawStairAisle(-8.52f, 0.35f);
+    drawStairAisle(-2.8f, 0.35f);
+    drawStairAisle( 2.8f, 0.35f);
+    drawStairAisle( 8.16f, 0.35f);
+
+    drawShadow(7.2f);
+    drawShadow(7.9f);
+    drawShadow(8.6f);
+    drawShadow(9.3f);
+
+    // publico
+    drawCrowd();
+
+    //divisões arquibancada
+    glColor3f(0.0f, 0.0f, 0.0f);
+    drawRect(-8.52f, 7.2f, 8.52f, 7.24f);
+    drawRect(-8.52f, 7.9f, 8.52f, 7.95f);
+    drawRect(-8.52f, 8.6f, 8.52f, 8.64f);
+    drawRect(-8.52f, 9.3f, 8.52f, 9.34f);
+
+    
 }
 
 // =====================================================================
@@ -1122,6 +1294,9 @@ void display() {
 
     // ---- Campo ----
     drawField();
+
+    // ---- Arquibancada ----
+    drawStands();
 
     // ---- Power-up ----
     drawStar();
