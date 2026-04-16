@@ -188,7 +188,7 @@ static void startAmbientSoundLoop() {
 
     stopAudio();
     // Loop infinito até `stopAudio()` ser chamado.
-    playFn("audio\\som ambiente.mp3", NULL, SND_FILENAME | SND_ASYNC | SND_LOOP | SND_NODEFAULT);
+    playFn("audio\\som-ambiente.wav", NULL, SND_FILENAME | SND_ASYNC | SND_LOOP | SND_NODEFAULT);
 }
 
 static void playGoalSoundAsync() {
