@@ -1419,7 +1419,7 @@ void update(int) {
         const float cornerRadius = 1.35f;
         if(isBallNearCorner(cornerRadius)) {
             cornerTrapTimer += deltaTime;
-            if(cornerTrapTimer >= 3.0f) {
+            if(cornerTrapTimer >= 2.0f) {
                 dispersePlayersFromBall(deltaTime);
             }
         } else {
