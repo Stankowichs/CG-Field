@@ -125,6 +125,7 @@ float goalAnimTimer  = 0.0f;
 int   lastGoalTeam   = -1;   // 0=home, 1=away
 
 float fieldGrassAnim = 0.0f; // animação sutil da grama
+float cornerTrapTimer = 0.0f;
 
 // =====================================================================
 // Utilitários
@@ -142,6 +143,49 @@ void clampPlayerToField(Player& pl) {
     if(pl.pos.x > FIELD_RIGHT - PLAYER_R) pl.pos.x = FIELD_RIGHT - PLAYER_R;
     if(pl.pos.y < FIELD_BOTTOM + PLAYER_R) pl.pos.y = FIELD_BOTTOM + PLAYER_R;
     if(pl.pos.y > FIELD_TOP   - PLAYER_R) pl.pos.y = FIELD_TOP   - PLAYER_R;
+}
+
+Vec2 clampTargetFromEdges(Vec2 target, float margin) {
+    if(target.x < FIELD_LEFT + margin)   target.x = FIELD_LEFT + margin;
+    if(target.x > FIELD_RIGHT - margin)  target.x = FIELD_RIGHT - margin;
+    if(target.y < FIELD_BOTTOM + margin) target.y = FIELD_BOTTOM + margin;
+    if(target.y > FIELD_TOP - margin)    target.y = FIELD_TOP - margin;
+    return target;
+}
+
+bool isBallNearCorner(float radius) {
+    Vec2 corners[4] = {
+        Vec2(FIELD_LEFT,  FIELD_BOTTOM),
+        Vec2(FIELD_LEFT,  FIELD_TOP),
+        Vec2(FIELD_RIGHT, FIELD_BOTTOM),
+        Vec2(FIELD_RIGHT, FIELD_TOP)
+    };
+
+    for(int i = 0; i < 4; i++) {
+        if(dist(ball.pos, corners[i]) <= radius) return true;
+    }
+    return false;
+}
+
+void dispersePlayersFromBall(float dt) {
+    const float affectRadius = 1.9f;
+    const float pushSpeed = 0.12f;
+    Vec2 fieldCenter(0.0f, 0.0f);
+    int totalPlayers = NUM_PLAYERS * 2 + 2;
+
+    for(int i = 0; i < totalPlayers; i++) {
+        Player& pl = players[i];
+        if(pl.isGoalie) continue;
+
+        float d = dist(pl.pos, ball.pos);
+        if(d > affectRadius) continue;
+
+        Vec2 pushDir = (pl.pos - ball.pos).norm();
+        if(pushDir.len() < 0.001f) pushDir = (fieldCenter - ball.pos).norm();
+
+        pl.pos = pl.pos + pushDir * (pushSpeed * dt / 0.016f);
+        clampPlayerToField(pl);
+    }
 }
 
 void resolvePlayerCollisions() {
@@ -182,6 +226,7 @@ void resetBall() {
     ball.angle    = 0;
     ball.turbo    = false;
     ball.turboTimer = 0;
+    cornerTrapTimer = 0.0f;
 }
 
 void resetPlayers() {
@@ -814,7 +859,8 @@ void updatePlayers(float dt) {
                 else if(idx == 2) support = Vec2(ball.pos.x - 2.0f, ball.pos.y - 1.5f);
                 else              support = Vec2(ball.pos.x - 1.0f, ball.pos.y);
 
-                Vec2 target = support;
+                const float edgeMargin = PLAYER_R + BALL_RADIUS + 0.22f;
+                Vec2 target = clampTargetFromEdges(support, edgeMargin);
                 Vec2 dir = (target - pl.pos).norm();
                 float d   = dist(pl.pos, target);
                 float spd = 0.04f;
@@ -844,12 +890,8 @@ void updatePlayers(float dt) {
                     // Atacante: vai direto na bola, mas evita mirar na borda
                     target = ball.pos;
                     agression = 0.065f;
-
                     const float edgeMargin = PLAYER_R + BALL_RADIUS + 0.22f;
-                    if(ball.pos.x < FIELD_LEFT + edgeMargin)  target.x = FIELD_LEFT + edgeMargin;
-                    if(ball.pos.x > FIELD_RIGHT - edgeMargin) target.x = FIELD_RIGHT - edgeMargin;
-                    if(ball.pos.y < FIELD_BOTTOM + edgeMargin) target.y = FIELD_BOTTOM + edgeMargin;
-                    if(ball.pos.y > FIELD_TOP - edgeMargin)    target.y = FIELD_TOP - edgeMargin;
+                    target = clampTargetFromEdges(target, edgeMargin);
                 } else if(ridx == 1) {
                     // Meio-campo: posição à frente
                     target = Vec2(ball.pos.x + 1.5f, ball.pos.y + 1.2f);
@@ -1114,6 +1156,16 @@ void update(int) {
     if(!goalAnimation) {
         updateBall(deltaTime);
         updatePlayers(deltaTime);
+
+        const float cornerRadius = 1.35f;
+        if(isBallNearCorner(cornerRadius)) {
+            cornerTrapTimer += deltaTime;
+            if(cornerTrapTimer >= 3.0f) {
+                dispersePlayersFromBall(deltaTime);
+            }
+        } else {
+            cornerTrapTimer = 0.0f;
+        }
     } else {
         goalAnimTimer += deltaTime;
         if(goalAnimTimer > 3.0f) {
