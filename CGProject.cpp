@@ -28,6 +28,11 @@
 #include <ctime>
 #include <vector>
 
+#ifdef _WIN32
+#include <windows.h>
+#include <mmsystem.h>
+#endif
+
 // =====================================================================
 // Constantes
 // =====================================================================
@@ -62,6 +67,8 @@ const int   NUM_PLAYERS  = 4;      // por time (excluindo goleiro)
 const float STAR_RADIUS  = 0.22f;
 const float TURBO_TIME   = 5.0f;   // segundos
 const float STAR_RESET_DELAY = 2.0f;
+
+const float GOAL_FREEZE_TIME = 6.0f; // sincroniza pausa/animação com `gol1.wav`
 
 // =====================================================================
 // Estruturas
@@ -155,6 +162,59 @@ void clampPlayerToField(Player& pl) {
     if(pl.pos.y < FIELD_BOTTOM + PLAYER_R) pl.pos.y = FIELD_BOTTOM + PLAYER_R;
     if(pl.pos.y > FIELD_TOP   - PLAYER_R) pl.pos.y = FIELD_TOP   - PLAYER_R;
 }
+
+#ifdef _WIN32
+static HMODULE getWinmmModule() {
+    static HMODULE hWinmm = NULL;
+    if(!hWinmm) hWinmm = LoadLibraryA("winmm.dll");
+    return hWinmm;
+}
+
+static void stopAudio() {
+    using PlaySoundAFn = BOOL (WINAPI*)(LPCSTR, HMODULE, DWORD);
+    HMODULE hWinmm = getWinmmModule();
+    if(!hWinmm) return;
+    auto playFn = reinterpret_cast<PlaySoundAFn>(GetProcAddress(hWinmm, "PlaySoundA"));
+    if(!playFn) return;
+    playFn(NULL, NULL, SND_PURGE);
+}
+
+static void startAmbientSoundLoop() {
+    using PlaySoundAFn = BOOL (WINAPI*)(LPCSTR, HMODULE, DWORD);
+    HMODULE hWinmm = getWinmmModule();
+    if(!hWinmm) return;
+    auto playFn = reinterpret_cast<PlaySoundAFn>(GetProcAddress(hWinmm, "PlaySoundA"));
+    if(!playFn) return;
+
+    stopAudio();
+    // Loop infinito até `stopAudio()` ser chamado.
+    playFn("audio\\som ambiente.mp3", NULL, SND_FILENAME | SND_ASYNC | SND_LOOP | SND_NODEFAULT);
+}
+
+static void playGoalSoundAsync() {
+    using PlaySoundAFn = BOOL (WINAPI*)(LPCSTR, HMODULE, DWORD);
+    HMODULE hWinmm = getWinmmModule();
+    if(!hWinmm) return;
+    auto playFn = reinterpret_cast<PlaySoundAFn>(GetProcAddress(hWinmm, "PlaySoundA"));
+    if(!playFn) return;
+
+    stopAudio(); // garante que o ambiente pare antes do `gol1.wav`
+    playFn("audio\\gol1.wav", NULL, SND_FILENAME | SND_ASYNC | SND_NODEFAULT);
+}
+
+static void playEndGameSoundSyncAndStop() {
+    using PlaySoundAFn = BOOL (WINAPI*)(LPCSTR, HMODULE, DWORD);
+    HMODULE hWinmm = getWinmmModule();
+    if(!hWinmm) return;
+    auto playFn = reinterpret_cast<PlaySoundAFn>(GetProcAddress(hWinmm, "PlaySoundA"));
+    if(!playFn) return;
+
+    stopAudio();
+    // Bloqueia até terminar para não cortar no `exit(0)`.
+    playFn("audio\\fimjogo.wav", NULL, SND_FILENAME | SND_SYNC | SND_NODEFAULT);
+    stopAudio();
+}
+#endif
 
 Vec2 clampTargetFromEdges(Vec2 target, float margin) {
     if(target.x < FIELD_LEFT + margin)   target.x = FIELD_LEFT + margin;
@@ -932,8 +992,20 @@ void drawScoreboard() {
 void drawGoalAnimation() {
     if(!goalAnimation) return;
 
-    float alpha = (goalAnimTimer > 1.5f) ? 1.0f : goalAnimTimer / 1.5f;
-    if(goalAnimTimer > 2.0f) alpha = 1.0f - (goalAnimTimer - 2.0f) / 1.0f;
+    // Ajusta fade para sincronizar com `GOAL_FREEZE_TIME` (6s).
+    const float fadeIn  = 1.5f;
+    const float fadeOut = GOAL_FREEZE_TIME;
+    const float hold    = 3.0f;
+    float alpha;
+    if(goalAnimTimer <= fadeIn) {
+        alpha = goalAnimTimer / fadeIn;
+    } else if(goalAnimTimer <= hold) {
+        alpha = 1.0f;
+    } else if(goalAnimTimer <= fadeOut) {
+        alpha = 1.0f - (goalAnimTimer - hold) / (fadeOut - hold);
+    } else {
+        alpha = 0.0f;
+    }
 
     // Flash de fundo
     float flash = (goalAnimTimer < 0.3f) ? 0.5f * (1.0f - goalAnimTimer/0.3f) : 0.0f;
@@ -1177,6 +1249,9 @@ void updateBall(float dt) {
                 lastGoalTeam    = 1;
                 goalAnimation   = true;
                 goalAnimTimer   = 0;
+#ifdef _WIN32
+                playGoalSoundAsync();
+#endif
                 resetBall();
                 resetPlayers();
                 resetStar();
@@ -1196,6 +1271,9 @@ void updateBall(float dt) {
                 lastGoalTeam    = 0;
                 goalAnimation   = true;
                 goalAnimTimer   = 0;
+#ifdef _WIN32
+                playGoalSoundAsync();
+#endif
                 resetBall();
                 resetPlayers();
                 resetStar();
@@ -1240,6 +1318,9 @@ void updateBall(float dt) {
                 lastGoalTeam    = 1;
                 goalAnimation   = true;
                 goalAnimTimer   = 0;
+#ifdef _WIN32
+                    playGoalSoundAsync();
+#endif
                 resetBall();
                 resetPlayers();
                 resetStar();
@@ -1257,6 +1338,9 @@ void updateBall(float dt) {
                 lastGoalTeam    = 0;
                 goalAnimation   = true;
                 goalAnimTimer   = 0;
+#ifdef _WIN32
+                    playGoalSoundAsync();
+#endif
                 resetBall();
                 resetPlayers();
                 resetStar();
@@ -1343,8 +1427,11 @@ void update(int) {
         }
     } else {
         goalAnimTimer += deltaTime;
-        if(goalAnimTimer > 3.0f) {
+        if(goalAnimTimer > GOAL_FREEZE_TIME) {
             goalAnimation = false;
+#ifdef _WIN32
+            startAmbientSoundLoop();
+#endif
         }
     }
 
@@ -1359,7 +1446,12 @@ void update(int) {
 // =====================================================================
 void keyDown(unsigned char key, int, int) {
     keys[key] = true;
-    if(key == 27) exit(0);           // ESC
+    if(key == 27) {                   // ESC
+#ifdef _WIN32
+        playEndGameSoundSyncAndStop();
+#endif
+        exit(0);
+    }
     if(key == 'r' || key == 'R') {
         resetBall();
         resetPlayers();
@@ -1417,6 +1509,11 @@ int main(int argc, char** argv) {
 
     initGame();
     lastTime = glutGet(GLUT_ELAPSED_TIME);
+
+#ifdef _WIN32
+    // Ambiente começa no início e fica em loop até um gol acontecer.
+    startAmbientSoundLoop();
+#endif
 
     // Registra callbacks
     glutDisplayFunc(display);
